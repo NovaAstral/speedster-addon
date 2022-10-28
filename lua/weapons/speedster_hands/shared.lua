@@ -1,7 +1,7 @@
 local SWEP = {Primary = {}, Secondary = {}} -- I don't know what this does
 
-SWEP.PrintName      = "Speedster Hands"
-SWEP.DrawCrosshair	= true
+SWEP.PrintName = "Speedster Hands"
+SWEP.DrawCrosshair = true
 SWEP.SlotPos = 1
 SWEP.Slot = 1
 SWEP.Spawnable = true
@@ -21,9 +21,10 @@ function SWEP:ShouldDropOnDie() return false end
 function SWEP:PreDrawViewModel() return true end -- This stops it from displaying as a pistol in your hands
 
 function SWEP:Initialize()
-	self.MaxSpd = 5000
+	self.MaxSpd = 1000
 	self.MinSpd = 600 --600 default sprint speed
-	net.SetNWInt("CurSpd",self.MinSpd)
+
+	self:SetNWInt("CurSpd",self.MinSpd)
 
     if(self.SetHoldType) then
 		self:SetHoldType("normal")
@@ -34,20 +35,21 @@ function SWEP:Initialize()
 	self:DrawShadow(false)
 
 	self.NextUse = CurTime()
-end
 
-/*
-hook.Add("ShouldCollide", "PhaseHook", function(ent1,ent2)
-	return false
-end)
-*/
+	/*
+	timer.Create("SpeedsterHealthRegen" .. self.Owner:EntIndex(), 2, 0, function()
+        if (not IsValid(self)) then return end
+        self.Owner:SetHealth(math.Clamp(self.Owner:Health() + 5, 1, self.MaxHealth))
+    end)
+	*/
+end
 
 if SERVER then
 	function SWEP:PrimaryAttack()
 		local ply = self.Owner
 		self.CurSpd = ply:GetRunSpeed()
 
-		net.SetNWInt("CurSpd",self.CurSpd)		
+		self:SetNWInt("CurSpd",self.CurSpd)		
 
 		if(ply:KeyDown(IN_USE)) then
 			ply:SetRunSpeed(math.Clamp(self.CurSpd + 50, self.MinSpd, self.MaxSpd))
@@ -61,7 +63,7 @@ if SERVER then
 		local ply = self.Owner
 		self.CurSpd = ply:GetRunSpeed()
 
-		net.SetNWInt("CurSpd",self.CurSpd)
+		self:SetNWInt("CurSpd",self.CurSpd)
 
 		if(ply:KeyDown(IN_USE)) then
 			ply:SetRunSpeed(math.Clamp(self.CurSpd - 50, self.MinSpd, self.MaxSpd))
@@ -78,57 +80,56 @@ if SERVER then
 		if self.NextUse < CurTime() then
 			if not self.Phase then
 				self.Phase = true
-				ply:EmitSound("buttons/button16.wav", 100, 120)
-				self:SetNWInt("PhaseActive", 1)
-				PlyCollision(ply,true)
+				ply:EmitSound("buttons/button16.wav",100,120)
+				self:SetNWInt("PhaseActive",1)
+				Phase(ply,true)
 			else
 				self.Phase = false
-				ply:EmitSound("buttons/button16.wav", 100, 100)
-				self:SetNWInt("PhaseActive", 0)
-				PlyCollision(ply,false)
+				ply:EmitSound("buttons/button16.wav",100,100)
+				self:SetNWInt("PhaseActive",0)
+				Phase(ply,false)
 			end
 
 			self.NextUse = CurTime() + 1
 		end
 	end
 
-	function PlyCollision(ply,on)
+	function Phase(ply,on)
 		local color = ply:GetColor()
 		local rendMode = ply:GetRenderMode()
-
-		--print(ply:GetCollisionGroup().." main")
 	
 		if(on == true) then
+			hook.Add("ShouldCollide","PhaseHook",function(ent1,ent2)
+				if(ent1 == self.Owner or ent2 == self.Owner) then
+					return false
+				end
+			end)
+
 			color.a = 240
-			ply:SetCollisionGroup(COLLISION_GROUP_WORLD)
 			ply:SetColor(color)
 			ply:SetRenderMode(RENDERMODE_TRANSCOLOR)
-
-			--net.Start("speedsterphase")
-			--net.WriteEntity(ply)
-            --net.WriteBit(true)
-            --net.Send(ply)
-			--print(ply:GetCollisionGroup().." on")
 		else
+			hook.Remove("ShouldCollide","PhaseHook")
 			color.a = 255
-			ply:SetCollisionGroup(COLLISION_GROUP_PLAYER)
+			ply:SetColor(color)
 			ply:SetRenderMode(rendMode)
-
-			--net.Start("speedsterphase")
-			--net.WriteEntity(ply)
-            --net.WriteBit(false)
-            --net.Send(ply)
-			--print(ply:GetCollisionGroup().." off")
 		end
 	end
 
 	function SWEP:Think() 
 		local ply = self.Owner
-		
-		--if ply:GetRunSpeed() > self.MinSpeed and ply:KeyDown(IN_RUN) then
-			--util.SpriteTrail(ply,0,Color(255,95,215),false,5,1,5,1/(5+1)*0.5,"trails/plasma")
-		--2end
+
+		--if(ply:GetRunSpeed() > self.MinSpeed and ply:KeyDown(IN_RUN) and not trail:IsValid()) then
+		--	local trail = util.SpriteTrail(ply,0,Color(255,95,215),false,5,1,5,1/(5+1)*0.5,"trails/plasma")
+		--end
 	end
+
+	
+	/*function SWEP:Holster()
+		hook.Remove("ShouldCollide","Phasehook")
+		--timer.Remove("SpeedsterHealthRegen" .. self.Owner:EntIndex())
+	end
+	*/	
 end
 
 if CLIENT then
@@ -137,23 +138,8 @@ if CLIENT then
 		CurSpdDisp = 600
     end
 
-	net.Receive("speedsterphase",function(len,ply)
-		local pl = net.ReadEntity()
-		if(IsValid(pl) and pl:IsPlayer()) then
-			--pl:ChatPrint("receive")
-			if(net.ReadBit() == 1) then
-				pl:SetCollisionGroup(COLLISION_GROUP_WORLD)
-				--pl:ChatPrint(pl:GetCollisionGroup().." on")
-			else
-				pl:SetCollisionGroup(COLLISION_GROUP_PLAYER)
-				--pl:ChatPrint(pl:GetCollisionGroup().." off")
-			end
-		end
-	end)
-
 	function SWEP:DrawHUD() --for displaying speed
-		draw.WordBox(10, ScrW() - 200, ScrH() - 140, "Speed: " .. net.getNWInt("CurSpd"), "Default", Color(0, 0, 0, 80), Color(255, 220, 0, 220))
-
+		draw.WordBox(10, ScrW() - 200, ScrH() - 140, "Speed: " .. self:GetNWInt("CurSpd"), "Default", Color(0, 0, 0, 80), Color(255, 220, 0, 220))
 	end
 
 	
