@@ -121,7 +121,7 @@ if SERVER then
 
 		--if(ply:GetRunSpeed() > self.MinSpeed and ply:KeyDown(IN_RUN) and not trail:IsValid()) then
 		--	local trail = util.SpriteTrail(ply,0,Color(255,95,215),false,5,1,5,1/(5+1)*0.5,"trails/plasma")
-		--end
+		--end --maybe use exists to not make a million trails?
 	end
 
 	
