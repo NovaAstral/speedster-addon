@@ -46,7 +46,7 @@ end
 
 if SERVER then
 	function SWEP:PrimaryAttack()
-		local ply = self.Owner
+		local ply = self:GetOwner()
 		self.CurSpd = ply:GetRunSpeed()
 
 		self:SetNWInt("CurSpd",self.CurSpd)		
@@ -60,7 +60,7 @@ if SERVER then
 
 
 	function SWEP:SecondaryAttack()
-		local ply = self.Owner
+		local ply = self:GetOwner()
 		self.CurSpd = ply:GetRunSpeed()
 
 		self:SetNWInt("CurSpd",self.CurSpd)
@@ -73,19 +73,21 @@ if SERVER then
 	end
 
 	function SWEP:Reload() -- Phasing
-		local ply = self.Owner
+		ply = self:GetOwner()
 
 		if (not IsValid(ply)) then return end
 
 		if self.NextUse < CurTime() then
 			if not self.Phase then
 				self.Phase = true
-				ply:EmitSound("buttons/button16.wav",100,120)
+
+				ply:EmitSound("phase_start",100,120)
+				
 				self:SetNWInt("PhaseActive",1)
 				Phase(ply,true)
 			else
 				self.Phase = false
-				ply:EmitSound("buttons/button16.wav",100,100)
+				ply:EmitSound("phase_stop.wav",100,100)
 				self:SetNWInt("PhaseActive",0)
 				Phase(ply,false)
 			end
@@ -99,8 +101,9 @@ if SERVER then
 		local rendMode = ply:GetRenderMode()
 	
 		if(on == true) then
+			ply:SetCustomCollisionCheck(true)
 			hook.Add("ShouldCollide","PhaseHook",function(ent1,ent2)
-				if(ent1 == self.Owner or ent2 == self.Owner) then
+				if(ent1 == ply or ent2 == ply) then
 					return false
 				end
 			end)
@@ -109,6 +112,7 @@ if SERVER then
 			ply:SetColor(color)
 			ply:SetRenderMode(RENDERMODE_TRANSCOLOR)
 		else
+			ply:SetCustomCollisionCheck(false)
 			hook.Remove("ShouldCollide","PhaseHook")
 			color.a = 255
 			ply:SetColor(color)
@@ -117,7 +121,7 @@ if SERVER then
 	end
 
 	function SWEP:Think() 
-		local ply = self.Owner
+		local ply = self:GetOwner()
 
 		--if(ply:GetRunSpeed() > self.MinSpeed and ply:KeyDown(IN_RUN) and not trail:IsValid()) then
 		--	local trail = util.SpriteTrail(ply,0,Color(255,95,215),false,5,1,5,1/(5+1)*0.5,"trails/plasma")
