@@ -21,8 +21,8 @@ function SWEP:ShouldDropOnDie() return false end
 function SWEP:PreDrawViewModel() return true end -- This stops it from displaying as a pistol in your hands
 
 function SWEP:Initialize()
-	self.MaxSpd = 1000
-	self.MinSpd = 600 --600 default sprint speed
+	self.MaxSpd = 2000
+	self.MinSpd = 400 -- 400 is default sprint speed even though wiki says 600
 
 	self:SetNWInt("CurSpd",self.MinSpd)
 
@@ -58,7 +58,6 @@ if SERVER then
 		end
 	end
 
-
 	function SWEP:SecondaryAttack()
 		local ply = self:GetOwner()
 		self.CurSpd = ply:GetRunSpeed()
@@ -75,19 +74,21 @@ if SERVER then
 	function SWEP:Reload() -- Phasing
 		ply = self:GetOwner()
 
+
 		if (not IsValid(ply)) then return end
 
 		if self.NextUse < CurTime() then
 			if not self.Phase then
 				self.Phase = true
 
-				ply:EmitSound("phase_start",100,120)
+				ply:EmitSound("phase_start.wav",100,100)
 				
 				self:SetNWInt("PhaseActive",1)
 				Phase(ply,true)
 			else
 				self.Phase = false
 				ply:EmitSound("phase_stop.wav",100,100)
+				ply:StopSound("phase_start.wav")
 				self:SetNWInt("PhaseActive",0)
 				Phase(ply,false)
 			end
