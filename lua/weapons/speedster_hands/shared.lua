@@ -74,34 +74,32 @@ if SERVER then
 	function SWEP:Reload() -- Phasing
 		ply = self:GetOwner()
 
-
 		if (not IsValid(ply)) then return end
 
 		if self.NextUse < CurTime() then
 			if not self.Phase then
 				self.Phase = true
 
-				ply:EmitSound("phase_start.wav",100,100)
-				
-				self:SetNWInt("PhaseActive",1)
-				Phase(ply,true)
+				Phase(ply,true,true)
 			else
 				self.Phase = false
-				ply:EmitSound("phase_stop.wav",100,100)
-				ply:StopSound("phase_start.wav")
-				self:SetNWInt("PhaseActive",0)
-				Phase(ply,false)
+
+				Phase(ply,false,true)
 			end
 
 			self.NextUse = CurTime() + 1
 		end
 	end
 
-	function Phase(ply,on)
+	function Phase(ply,on,playsound)
 		local color = ply:GetColor()
 		local rendMode = ply:GetRenderMode()
 	
 		if(on == true) then
+			if(playsound == true) then
+				ply:EmitSound("phase_start.wav",100,100)
+			end
+
 			ply:SetCustomCollisionCheck(true)
 			hook.Add("ShouldCollide","PhaseHook",function(ent1,ent2)
 				if(ent1 == ply or ent2 == ply) then
@@ -113,8 +111,15 @@ if SERVER then
 			ply:SetColor(color)
 			ply:SetRenderMode(RENDERMODE_TRANSCOLOR)
 		else
+			if(playsound == true) then
+				ply:EmitSound("phase_stop.wav",100,100)
+			end
+
+			ply:StopSound("phase_start.wav")
+
 			ply:SetCustomCollisionCheck(false)
 			hook.Remove("ShouldCollide","PhaseHook")
+
 			color.a = 255
 			ply:SetColor(color)
 			ply:SetRenderMode(rendMode)
@@ -122,19 +127,17 @@ if SERVER then
 	end
 
 	function SWEP:Think() 
-		local ply = self:GetOwner()
+		--local ply = self:GetOwner()
 
-		--if(ply:GetRunSpeed() > self.MinSpeed and ply:KeyDown(IN_RUN) and not trail:IsValid()) then
-		--	local trail = util.SpriteTrail(ply,0,Color(255,95,215),false,5,1,5,1/(5+1)*0.5,"trails/plasma")
-		--end --maybe use exists to not make a million trails?
+		--I dont know how to do trails yet
+		--util.SpriteTrail(ply,0,Color(255,95,215),false,5,1,5,1/(5+1)*0.5,"trails/plasma")
 	end
 
-	
-	/*function SWEP:Holster()
-		hook.Remove("ShouldCollide","Phasehook")
-		--timer.Remove("SpeedsterHealthRegen" .. self.Owner:EntIndex())
+	function SWEP:OnRemove() -- When the player dies
+		Phase(self:GetOwner(),false,false)
+		self:GetOwner():SetRunSpeed(400)
+		self:SetNWInt("CurSpd",self.MinSpd)
 	end
-	*/	
 end
 
 if CLIENT then
