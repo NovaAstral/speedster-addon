@@ -44,6 +44,16 @@ function SWEP:Initialize()
 	*/
 end
 
+function SWEP:Deploy()
+	hook.Add("ShouldCollide","TFPhaseHook",function(ent1,ent2)
+		if(self.Phase == true) then
+			if(ent1 == self:GetOwner() or ent2 == self:GetOwner()) then
+				return false
+			end
+		end
+	end)
+end
+
 if SERVER then
 	function SWEP:PrimaryAttack()
 		local ply = self:GetOwner()
@@ -101,11 +111,7 @@ if SERVER then
 			end
 
 			ply:SetCustomCollisionCheck(true)
-			hook.Add("ShouldCollide","PhaseHook",function(ent1,ent2)
-				if(ent1 == ply or ent2 == ply) then
-					return false
-				end
-			end)
+			ply:CollisionRulesChanged()
 
 			color.a = 240
 			ply:SetColor(color)
@@ -115,10 +121,10 @@ if SERVER then
 				ply:EmitSound("phase_stop.wav",100,100)
 			end
 
-			ply:StopSound("phase_start.wav")
+			ply:SetCustomCollisionCheck(true)
+			ply:CollisionRulesChanged()
 
-			ply:SetCustomCollisionCheck(false)
-			hook.Remove("ShouldCollide","PhaseHook")
+			ply:StopSound("phase_start.wav")
 
 			color.a = 255
 			ply:SetColor(color)
@@ -137,6 +143,10 @@ if SERVER then
 		Phase(self:GetOwner(),false,false)
 		self:GetOwner():SetRunSpeed(400)
 		self:SetNWInt("CurSpd",self.MinSpd)
+
+		self:GetOwner():SetCustomCollisionCheck(false)
+		self:GetOwner():CollisionRulesChanged()
+		hook.Remove("ShouldCollide","PhaseHook")
 	end
 end
 
